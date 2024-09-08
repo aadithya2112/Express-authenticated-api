@@ -10,12 +10,29 @@ const app = express();
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1);
+    });
 
 // User model
 const User = require('./models/User');
+
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401); // No token
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // Invalid token
+        req.user = user;
+        next();
+    });
+};
 
 // Basic route
 app.get('/', (req, res) => {
@@ -36,6 +53,7 @@ app.post('/api/register', async (req, res) => {
         await newUser.save();
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
+        console.error('Error during registration:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -53,23 +71,10 @@ app.post('/api/login', async (req, res) => {
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ token, redirect: '/api/home' });
     } catch (error) {
+        console.error('Error during login:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
-
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token == null) return res.sendStatus(401); // No token
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403); // Invalid token
-        req.user = user;
-        next();
-    });
-};
 
 // Server start
 const PORT = process.env.PORT || 4000;
