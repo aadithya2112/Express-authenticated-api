@@ -17,26 +17,15 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 // User model
 const User = require('./models/User');
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token == null) return res.sendStatus(401); // No token
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403); // Invalid token
-        req.user = user;
-        next();
-    });
-};
-
+// Basic route
+app.get('/', (req, res) => {
+    res.send('Welcome to the API');
+});
 
 // Home route (protected)
 app.get('/api/home', authenticateToken, (req, res) => {
     res.send('Welcome to the Home Page');
 });
-
 
 // Register route
 app.post('/api/register', async (req, res) => {
@@ -68,6 +57,19 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401); // No token
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // Invalid token
+        req.user = user;
+        next();
+    });
+};
 
 // Server start
 const PORT = process.env.PORT || 4000;
